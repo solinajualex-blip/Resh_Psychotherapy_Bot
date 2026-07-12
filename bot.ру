@@ -1,103 +1,22 @@
-import asyncio
-import json
 import os
-from datetime import datetime
+import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 TOKEN = os.getenv("BOT_TOKEN")
-DATA_FILE = "diary_data.json"
 
 bot = Bot(token=TOKEN)
-dp = Dispatcher(storage=MemoryStorage())
-scheduler = AsyncIOScheduler()
+dp = Dispatcher()
 
-# ================== Работа с данными ==================
-def load_data():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-class Diary(StatesGroup):
-    anxiety = State()
-    worry = State()
-    sleep = State()
-    medication = State()
-    side_effects = State()
-    energy = State()
-    mood = State()
-    comment = State()
-
-def get_multi_keyboard(options, selected=None):
-    if selected is None:
-        selected = []
-    kb = []
-    for opt in options:
-        text = f"✅ {opt}" if opt in selected else opt
-        kb.append([InlineKeyboardButton(text=text, callback_data=f"select:{opt}")])
-    kb.append([InlineKeyboardButton(text="✅ Готово", callback_data="done")])
-    return InlineKeyboardMarkup(inline_keyboard=kb)
-
-# ================== Авто-отправка ==================
-async def send_daily_diary(user_id: int):
-    try:
-        await bot.send_message(user_id, "🌿 Время заполнить дневник за сегодня!\nНажми /diary")
-    except:
-        pass
-
-# ================== Команды ==================
 @dp.message(Command("start"))
 async def start(message: types.Message):
     await message.answer(
-        "🌿 Привет! Это твой личный дневник терапии.\n\n"
-        "/diary — заполнить сегодня\n"
-        "/stats — статистика\n"
-        "/history — последние записи"
+        "🌿 Привет! Бот работает.\n\n"
+        "Это тестовая версия дневника.\n"
+        "Пока доступна только команда /start"
     )
 
-@dp.message(Command("diary"))
-async def start_diary(message: types.Message, state: FSMContext):
-    await state.set_state(Diary.anxiety)
-    options = ["Лёгкое беспокойство", "Сердцебиение/дрожь", "Паническая атака", "Общее напряжение", "Нет тревоги"]
-    await message.answer("1/8\nКакие проявления тревоги были сегодня? (можно несколько)", 
-                        reply_markup=get_multi_keyboard(options))
-
-# ================== Callback для мультивыбора ==================
-@dp.callback_query()
-async def handle_callback(callback: types.CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    current_state = await state.get_state()
-
-    if callback.data == "done":
-        # Переход к следующему вопросу
-        if current_state == Diary.anxiety:
-            await state.set_state(Diary.worry)
-            options = ["О здоровье", "О будущем", "О близких", "О работе", "Нет"]
-            await callback.message.edit_text("2/8\nО чём были навязчивые мысли?", 
-                                           reply_markup=get_multi_keyboard(options))
-        # ... (остальные переходы будут добавлены)
-        return
-
-    # Логика выбора
-    # (полная версия будет чуть позже, если этот код сработает)
-
-    await callback.answer()
-
 async def main():
-    # Планировщик — каждый день в 20:00 (измени время при необходимости)
-    scheduler.add_job(send_daily_diary, 'cron', hour=20, minute=0, args=[YOUR_USER_ID])  # ← Замени на свой Telegram ID
-    scheduler.start()
-    
     await dp.start_polling(bot)
 
 if name == "__main__":
